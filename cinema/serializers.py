@@ -26,44 +26,40 @@ class GenreSerializer(serializers.ModelSerializer):
 class ActorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Actor
-        fields = ["id", "first_name", "last_name"]
-
-
-class ActorDetailSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(read_only=True)
-
-    class Meta:
-        model = Actor
         fields = ["id", "first_name", "last_name", "full_name"]
 
 
 class MovieSerializer(serializers.ModelSerializer):
-    actors = serializers.SlugRelatedField(
-        many=True, read_only=True, slug_field="full_name"
-    )
-    genres = serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field="name"
-    )
-
     class Meta:
         model = Movie
-        fields = ["id", "title", "description", "duration", "genres", "actors"]
-
-
-class MovieDetailSerializer(MovieSerializer):
-    genres = serializers.SerializerMethodField()
-    actors = ActorDetailSerializer(many=True, read_only=True)
-
-    def get_genres(self, obj):
-        return [
-            {"id": genre.id, "name": genre.name}
-            for genre in obj.genres.all()
+        fields = [
+            "id", "title", "description", "duration", "genres", "actors"
         ]
 
 
+class MovieListSerializer(MovieSerializer):
+    actors = serializers.SlugRelatedField(
+        many=True, slug_field="full_name", read_only=True
+    )
+    genres = serializers.SlugRelatedField(
+        many=True,
+        slug_field="name",
+        read_only=True
+    )
+
+
+class MovieDetailSerializer(MovieListSerializer):
+    genres = GenreSerializer(many=True, read_only=True)
+    actors = ActorSerializer(many=True, read_only=True)
+
+
 class MovieSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MovieSession
+        fields = ("id", "show_time", "movie", "cinema_hall",)
+
+
+class MovieSessionListSerializer(MovieSerializer):
     movie_title = serializers.ReadOnlyField(
         source="movie.title"
     )
@@ -85,8 +81,8 @@ class MovieSessionSerializer(serializers.ModelSerializer):
         ]
 
 
-class MovieSessionDetailSerializer(MovieSessionSerializer):
-    movie = MovieSerializer()
+class MovieSessionDetailListSerializer(MovieSessionListSerializer):
+    movie = MovieListSerializer()
     cinema_hall = CinemaHallSerializer()
 
     class Meta:
